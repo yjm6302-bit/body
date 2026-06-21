@@ -14,6 +14,26 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const getKoreanErrorMessage = (msg: string): string => {
+    const lower = msg.toLowerCase();
+    if (lower.includes("invalid login credentials")) {
+      return "이메일 또는 비밀번호가 일치하지 않습니다.";
+    }
+    if (lower.includes("user already registered")) {
+      return "이미 가입된 이메일 주소입니다.";
+    }
+    if (lower.includes("email not confirmed") || lower.includes("verification")) {
+      return "이메일 인증이 필요합니다. 메일함을 확인해 주세요.";
+    }
+    if (lower.includes("password")) {
+      return "비밀번호 규칙이 올바르지 않습니다. (최소 6자 이상)";
+    }
+    if (lower.includes("rate limit") || lower.includes("too many requests")) {
+      return "요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+    return msg;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -21,7 +41,7 @@ export function LoginScreen() {
       const fn = mode === "signin" ? signIn : signUp;
       const { error } = await fn(email, password);
       if (error) {
-        toast.error(error.message);
+        toast.error(getKoreanErrorMessage(error.message));
       } else if (mode === "signup") {
         toast.success("가입 완료! 이메일 인증 후 로그인하세요.");
       }

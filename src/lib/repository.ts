@@ -33,13 +33,39 @@ export async function getOrCreateDailyRecord(
   if (selErr) throw selErr;
   if (existing) return existing as DailyRecord;
 
-  const { data: created, error: insErr } = await supabase
-    .from("daily_records")
-    .insert({ user_id: userId, date: dateKey })
-    .select("*")
-    .single();
-  if (insErr) throw insErr;
-  return created as DailyRecord;
+  try {
+    const { data: created, error: insErr } = await supabase
+      .from("daily_records")
+      .insert({ user_id: userId, date: dateKey })
+      .select("*")
+      .single();
+    if (insErr) {
+      if (insErr.code === "23505" || String((insErr as any).status) === "409" || insErr.message?.includes("duplicate")) {
+        const { data: retryData, error: retryErr } = await supabase
+          .from("daily_records")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("date", dateKey)
+          .maybeSingle();
+        if (!retryErr && retryData) {
+          return retryData as DailyRecord;
+        }
+      }
+      throw insErr;
+    }
+    return created as DailyRecord;
+  } catch (err: any) {
+    const { data: retryData, error: retryErr } = await supabase
+      .from("daily_records")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", dateKey)
+      .maybeSingle();
+    if (!retryErr && retryData) {
+      return retryData as DailyRecord;
+    }
+    throw err;
+  }
 }
 
 /** 하루치 통합 데이터(헤더 + 모든 자식 로그)를 한 번에 패치 */

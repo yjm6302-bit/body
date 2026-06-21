@@ -24,25 +24,46 @@ interface Props {
   onSaved: () => void;
 }
 
-/** ISO timestamp -> datetime-local input 값 (로컬 타임존) */
-function toLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
+const DEFAULT_BED_HOUR = 23; // 취침 기본 23:00
+const DEFAULT_WAKE_HOUR = 7; // 기상 기본 07:00
+
+/** Date -> datetime-local input 값 ("YYYY-MM-DDTHH:MM", 로컬 타임존) */
+function toLocalInput(d: Date): string {
   const off = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - off).toISOString().slice(0, 16);
 }
 
-export function SleepSheet({ open, onOpenChange, record, onSaved }: Props) {
+/** ISO 문자열 -> datetime-local 값 */
+function isoToLocalInput(iso: string): string {
+  return toLocalInput(new Date(iso));
+}
+
+export function SleepSheet({ open, onOpenChange, date, record, onSaved }: Props) {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // 기록이 있으면 그 값을, 없으면 기본값(취침=전날 23:00 / 기상=선택일 07:00)을 채운다.
   useEffect(() => {
-    if (open) {
-      setStart(toLocalInput(record?.sleep_start ?? null));
-      setEnd(toLocalInput(record?.sleep_end ?? null));
+    if (!open) return;
+
+    if (record?.sleep_start) {
+      setStart(isoToLocalInput(record.sleep_start));
+    } else {
+      const bed = new Date(date);
+      bed.setDate(bed.getDate() - 1);
+      bed.setHours(DEFAULT_BED_HOUR, 0, 0, 0);
+      setStart(toLocalInput(bed));
     }
-  }, [open, record?.sleep_start, record?.sleep_end]);
+
+    if (record?.sleep_end) {
+      setEnd(isoToLocalInput(record.sleep_end));
+    } else {
+      const wake = new Date(date);
+      wake.setHours(DEFAULT_WAKE_HOUR, 0, 0, 0);
+      setEnd(toLocalInput(wake));
+    }
+  }, [open, date, record?.sleep_start, record?.sleep_end]);
 
   const startIso = start ? new Date(start).toISOString() : null;
   const endIso = end ? new Date(end).toISOString() : null;
@@ -71,7 +92,9 @@ export function SleepSheet({ open, onOpenChange, record, onSaved }: Props) {
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>수면</DrawerTitle>
-          <DrawerDescription>취침/기상 시각을 입력하면 총 수면시간이 계산됩니다.</DrawerDescription>
+          <DrawerDescription>
+            기본값이 채워져 있습니다. 시각만 대략 맞춰 조정하세요.
+          </DrawerDescription>
         </DrawerHeader>
 
         <div className="space-y-4 px-5 py-2">

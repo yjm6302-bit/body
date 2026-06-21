@@ -73,11 +73,14 @@ create table if not exists public.water_logs (
 create table if not exists public.supplement_settings (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references public.profiles (id) on delete cascade,
-  name          varchar not null,
-  dosage        varchar,
-  package_time  varchar not null,  -- 아침/점심/저녁
+  name          varchar not null,  -- 영양제 제품 이름 (예: 종합비타민)
+  dosage        varchar,           -- 성분 및 복용량 (예: 1정)
+  ingredients   text,              -- 전체 성분 자유 입력(여러 줄 붙여넣기)
+  package_time  varchar not null,  -- 아침/점심/저녁/취침
   created_at    timestamptz not null default now()
 );
+-- 이미 이전 버전(ingredients 컬럼 없음)으로 테이블을 만들었다면 아래를 한 번 실행하세요.
+--   alter table public.supplement_settings add column if not exists ingredients text;
 
 -- 9) supplement_logs : 영양제 복용 체크 로그 ----------------------------------
 create table if not exists public.supplement_logs (

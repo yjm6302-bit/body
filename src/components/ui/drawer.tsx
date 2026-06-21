@@ -30,7 +30,7 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onOpenAutoFocus, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
@@ -39,6 +39,7 @@ const DrawerContent = React.forwardRef<
         "fixed inset-x-0 bottom-0 z-50 mx-auto flex h-auto max-h-[92vh] w-full max-w-md flex-col rounded-t-2xl border-t border-border bg-surface",
         className,
       )}
+      onOpenAutoFocus={onOpenAutoFocus ?? ((e) => e.preventDefault())}
       {...props}
     >
       {/* 드래그 핸들 */}

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/toaster";
@@ -31,7 +32,7 @@ interface Props {
   onSaved: () => void;
 }
 
-const TIMES: PackageTime[] = ["아침", "점심", "저녁"];
+const TIMES: PackageTime[] = ["아침", "점심", "저녁", "취침"];
 
 export function SupplementSheet({
   open,
@@ -46,6 +47,7 @@ export function SupplementSheet({
   const [manage, setManage] = useState(false);
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
+  const [ingredients, setIngredients] = useState("");
   const [time, setTime] = useState<PackageTime>("아침");
   const [busy, setBusy] = useState(false);
 
@@ -68,11 +70,13 @@ export function SupplementSheet({
         user_id: userId,
         name: name.trim(),
         dosage: dosage.trim() || null,
+        ingredients: ingredients.trim() || null,
         package_time: time,
       });
       toast.success("영양제가 등록되었습니다.");
       setName("");
       setDosage("");
+      setIngredients("");
       onSettingsChanged();
     } catch {
       toast.error("등록에 실패했습니다.");
@@ -139,9 +143,16 @@ export function SupplementSheet({
                           onCheckedChange={(v) => toggle(s.id, Boolean(v))}
                         />
                         <span className="flex-1 text-sm">
-                          {s.name}
-                          {s.dosage && (
-                            <span className="text-muted-foreground"> · {s.dosage}</span>
+                          <span>
+                            {s.name}
+                            {s.dosage && (
+                              <span className="text-muted-foreground"> · {s.dosage}</span>
+                            )}
+                          </span>
+                          {s.ingredients && (
+                            <span className="mt-0.5 block whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                              {s.ingredients}
+                            </span>
                           )}
                         </span>
                       </label>
@@ -153,14 +164,14 @@ export function SupplementSheet({
 
           {manage && (
             <>
-              <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+               <div className="space-y-3 rounded-lg border border-border bg-background p-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="sup-name">이름</Label>
                   <Input
                     id="sup-name"
                     placeholder="예: 종합비타민"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -169,12 +180,22 @@ export function SupplementSheet({
                     id="sup-dose"
                     placeholder="예: 1정"
                     value={dosage}
-                    onChange={(e) => setDosage(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDosage(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sup-ing">성분 (선택)</Label>
+                  <Textarea
+                    id="sup-ing"
+                    placeholder={"성분표를 그대로 복사해 붙여넣으세요.\n예) 비타민C 1000mg, 아연 15mg,\n마그네슘 350mg, 비타민D 1000IU ..."}
+                    value={ingredients}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setIngredients(e.target.value)}
+                    rows={4}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label>시간대</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {TIMES.map((t) => (
                       <Button
                         key={t}

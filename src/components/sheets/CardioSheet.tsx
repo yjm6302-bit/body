@@ -30,18 +30,16 @@ export function CardioSheet({ open, onOpenChange, recordId, logs, onSaved }: Pro
   const [type, setType] = useState(TYPES[0]);
   const [distance, setDistance] = useState("");
   const [min, setMin] = useState("");
-  const [sec, setSec] = useState("");
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
     setDistance("");
     setMin("");
-    setSec("");
   };
 
   const add = async () => {
     const dist = Number(distance);
-    const duration = Number(min || 0) * 60 + Number(sec || 0);
+    const duration = Number(min || 0) * 60; // 분 단위 입력 → 초 단위 저장
     if (!dist || dist <= 0) return toast.error("거리를 입력하세요.");
     if (duration <= 0) return toast.error("시간을 입력하세요.");
     setBusy(true);
@@ -94,7 +92,7 @@ export function CardioSheet({ open, onOpenChange, recordId, logs, onSaved }: Pro
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="dist">거리(km)</Label>
               <Input
@@ -107,23 +105,13 @@ export function CardioSheet({ open, onOpenChange, recordId, logs, onSaved }: Pro
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="min">분</Label>
+              <Label htmlFor="min">시간(분)</Label>
               <Input
                 id="min"
                 type="number"
                 inputMode="numeric"
                 value={min}
                 onChange={(e) => setMin(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sec">초</Label>
-              <Input
-                id="sec"
-                type="number"
-                inputMode="numeric"
-                value={sec}
-                onChange={(e) => setSec(e.target.value)}
               />
             </div>
           </div>

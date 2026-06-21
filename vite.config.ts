@@ -14,4 +14,15 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          supabase: ["@supabase/supabase-js"],
+          genai: ["@google/genai"],
+          vendor: ["react", "react-dom", "react-day-picker", "date-fns"],
+        },
+      },
+    },
+  },
 });

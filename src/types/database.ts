@@ -3,7 +3,7 @@
 // ============================================================================
 
 export type MealType = "아침" | "점심" | "저녁" | "간식";
-export type PackageTime = "아침" | "점심" | "저녁";
+export type PackageTime = "아침" | "점심" | "저녁" | "취침";
 export type MetricType = "inbody" | "checkup";
 
 export interface Profile {
@@ -78,7 +78,9 @@ export interface SupplementSetting {
   id: string;
   user_id: string;
   name: string;
-  dosage: string | null;
+  dosage?: string | null;
+  /** 전체 성분 자유 입력 (여러 줄 붙여넣기 가능) */
+  ingredients?: string | null;
   package_time: PackageTime;
   created_at: string;
 }

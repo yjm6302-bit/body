@@ -10,6 +10,39 @@ const ai = new GoogleGenAI({ apiKey: apiKey ?? "" });
 // 무료 등급에서 사용 가능한 멀티모달 모델
 const MODEL = "gemini-2.5-flash";
 
+/**
+ * 트래픽 한도(429)나 서버 일시 장애(503) 등 일시적인 사유로 API 호출이 실패할 때 
+ * 지수 백오프 방식으로 최대 3회 재시도하는 헬퍼 함수
+ */
+async function retryWithDelay<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1500,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const status = error?.status;
+    const msg = String(error?.message || "").toLowerCase();
+
+    const isRetryable =
+      status === 429 ||
+      status === 503 ||
+      msg.includes("503") ||
+      msg.includes("429") ||
+      msg.includes("unavailable") ||
+      msg.includes("resource_exhausted") ||
+      msg.includes("overloaded");
+
+    if (retries > 0 && isRetryable) {
+      console.warn(`Gemini API call failed (${error?.message}). Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return retryWithDelay(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 /** data URL 또는 순수 base64 문자열에서 base64 본문만 추출 */
 function stripBase64(dataUrl: string): string {
   const comma = dataUrl.indexOf(",");
@@ -33,7 +66,7 @@ export async function parseHealthImage(
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
 
-  const response = await ai.models.generateContent({
+  const response = await retryWithDelay(() => ai.models.generateContent({
     model: MODEL,
     contents: [
       {
@@ -70,7 +103,7 @@ export async function parseHealthImage(
         required: ["metric_type", "data"],
       },
     },
-  });
+  }));
 
   const text = response.text ?? "{}";
   return JSON.parse(text) as ParsedMetric;
@@ -84,7 +117,7 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
 
-  const response = await ai.models.generateContent({
+  const response = await retryWithDelay(() => ai.models.generateContent({
     model: MODEL,
     contents: [
       {
@@ -96,6 +129,13 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
               "아래는 사용자의 하루치 건강 기록입니다. 이를 분석해 한국어로 피드백을 작성하세요.",
               "각 항목은 2~3문장으로 구체적이고 실천 가능한 조언을 담되, 과하게 단정하지 마세요.",
               "기록이 비어있는 영역은 입력을 권유하는 톤으로 안내하세요.",
+              "",
+              "※ 건강 점수(score) 채점 기준 (매우 엄격하고 보수적으로 산정할 것):",
+              "- 기본 시작 점수는 60점입니다. 모든 카테고리(운동, 식단, 수분, 수면)가 골고루 성실하게 기록되고 모범적이어야만 80점 이상을 부여할 수 있습니다.",
+              "- 유산소/무산소 운동 기록이 둘 다 전혀 없으면 당일 건강 점수는 최고 60점을 넘을 수 없습니다.",
+              "- 수분 섭취량이 1000ml 미만이거나 식단 기록이 아예 없는 등 영양 관리가 미흡하면 점수를 대폭 감점(10~20점 감점)하세요.",
+              "- 수면 시간이 6시간 미만이거나 기록이 없으면 추가로 감점하십시오.",
+              "- 완벽에 가까운 루틴을 수행한 날에만 제한적으로 90점 이상을 부여하세요.",
               "",
               "[하루 기록]",
               summary,
@@ -118,7 +158,7 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
         required: ["score", "overall", "exercise", "nutrition", "sleep"],
       },
     },
-  });
+  }));
 
   const text = response.text ?? "{}";
   return JSON.parse(text) as AiFeedback;

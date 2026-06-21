@@ -11,6 +11,9 @@ export default {
         // 기획 디자인 시스템 팔레트 (프리미엄 다크 테마)
         background: "#0B0F19", // 메인 뷰포트 배경 (슬레이트 블랙)
         surface: "#161E2E", // 카드 배경
+        // card = surface 별칭 (컴포넌트에서 bg-card / text-card-foreground 사용)
+        card: "#161E2E",
+        "card-foreground": "#F9FAFB",
         // 의미 기반 토큰
         border: "#1F2937",
         input: "#1F2937",

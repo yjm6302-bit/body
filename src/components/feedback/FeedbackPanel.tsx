@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { generateFeedback } from "@/lib/gemini";
 import { saveAiFeedback } from "@/lib/repository";
 import { cn } from "@/lib/utils";
-import type { DailyBundle, Profile, SupplementSetting, AiFeedback } from "@/types/database";
+import type { DailyBundle, Profile, SupplementSetting } from "@/types/database";
 
 interface Props {
   bundle: DailyBundle;
@@ -87,7 +87,8 @@ export function FeedbackPanel({ bundle, profile, settings, onSaved }: Props) {
         .map((set) => {
           const log = bundle.supplements.find((l) => l.supplement_setting_id === set.id);
           const takenText = log?.taken ? "복용" : "미복용";
-          return `${set.name}(${set.package_time} - ${takenText})`;
+          const detail = [set.dosage, set.ingredients].filter(Boolean).join(", ");
+          return `${set.name}(${set.package_time} - ${takenText}${detail ? `; ${detail}` : ""})`;
         })
         .join(", ");
       lines.push(`- 영양제 섭취: ${supStr}`);
@@ -127,9 +128,20 @@ export function FeedbackPanel({ bundle, profile, settings, onSaved }: Props) {
       await saveAiFeedback(record.id, aiResponse);
       toast.success("AI 피드백이 업데이트되었습니다.");
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "피드백 생성에 실패했습니다.");
+      let errMsg = "피드백 생성에 실패했습니다.";
+      const msg = String(error?.message || "").toLowerCase();
+      const status = error?.status;
+
+      if (status === 503 || msg.includes("503") || msg.includes("unavailable") || msg.includes("overloaded")) {
+        errMsg = "현재 AI 서비스의 트래픽이 많아 일시적으로 응답이 지연되고 있습니다. 잠시 후 '다시 분석' 버튼을 눌러주세요.";
+      } else if (status === 429 || msg.includes("429") || msg.includes("quota") || msg.includes("exhausted")) {
+        errMsg = "AI 서비스 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.";
+      } else if (error instanceof Error) {
+        errMsg = error.message;
+      }
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
