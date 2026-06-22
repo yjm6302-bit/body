@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Loader2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -11,6 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { DeleteButton } from "@/components/common/DeleteButton";
+import { ListRow } from "@/components/common/ListRow";
 import { toast } from "@/components/ui/toaster";
 import { insertLog, deleteLog } from "@/lib/repository";
 import type { StrengthLog, StrengthSet } from "@/types/database";
@@ -135,30 +138,24 @@ export function StrengthSheet({ open, onOpenChange, recordId, logs, onSaved }: P
           {logs.length > 0 && (
             <ul className="space-y-2">
               {logs.map((l) => (
-                <li
-                  key={l.id}
-                  className="flex items-start justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
-                >
+                <ListRow key={l.id} align="start">
                   <div>
                     <p className="font-medium text-exercise">{l.exercise_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {l.sets.map((s) => `${s.weight}kg×${s.reps}`).join(", ")}
                     </p>
                   </div>
-                  <button onClick={() => remove(l.id)} aria-label="삭제">
-                    <Trash2 className="h-4 w-4 text-danger" />
-                  </button>
-                </li>
+                  <DeleteButton onClick={() => remove(l.id)} />
+                </ListRow>
               ))}
             </ul>
           )}
         </div>
 
         <DrawerFooter>
-          <Button onClick={add} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            운동 추가
-          </Button>
+          <SubmitButton variant="exercise" action="add" busy={busy} onClick={add}>
+            추가
+          </SubmitButton>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

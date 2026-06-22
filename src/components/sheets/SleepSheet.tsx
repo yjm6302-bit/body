@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Moon } from "lucide-react";
+import { Moon } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/common/SubmitButton";
 import { toast } from "@/components/ui/toaster";
 import { updateDailyRecord } from "@/lib/repository";
 import { calcSleepHours } from "@/lib/utils";
@@ -36,6 +37,21 @@ function toLocalInput(d: Date): string {
 /** ISO 문자열 -> datetime-local 값 */
 function isoToLocalInput(iso: string): string {
   return toLocalInput(new Date(iso));
+}
+
+/** 지금 시각을 한국시간(KST) 기준 datetime-local 값("YYYY-MM-DDTHH:MM")으로 반환 */
+function nowKstInput(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
 export function SleepSheet({ open, onOpenChange, date, record, onSaved }: Props) {
@@ -100,21 +116,45 @@ export function SleepSheet({ open, onOpenChange, date, record, onSaved }: Props)
         <div className="space-y-4 px-5 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="sleep-start">취침 시각</Label>
-            <Input
-              id="sleep-start"
-              type="datetime-local"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="sleep-start"
+                type="datetime-local"
+                className="flex-1"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setStart(nowKstInput())}
+              >
+                지금
+              </Button>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sleep-end">기상 시각</Label>
-            <Input
-              id="sleep-end"
-              type="datetime-local"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="sleep-end"
+                type="datetime-local"
+                className="flex-1"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setEnd(nowKstInput())}
+              >
+                지금
+              </Button>
+            </div>
           </div>
 
           {hours != null && (
@@ -126,9 +166,9 @@ export function SleepSheet({ open, onOpenChange, date, record, onSaved }: Props)
         </div>
 
         <DrawerFooter>
-          <Button variant="trust" onClick={save} disabled={busy}>
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}저장
-          </Button>
+          <SubmitButton variant="trust" action="save" busy={busy} onClick={save}>
+            저장
+          </SubmitButton>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

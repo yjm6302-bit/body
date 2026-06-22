@@ -20,12 +20,22 @@ export function SetupNotice() {
           <ul className="list-disc space-y-1 pl-5">
             <li>VITE_SUPABASE_URL</li>
             <li>VITE_SUPABASE_ANON_KEY</li>
-            <li>VITE_GEMINI_API_KEY</li>
           </ul>
           <p>
             Supabase 프로젝트 생성 후{" "}
             <code className="rounded bg-background px-1 text-foreground">supabase/schema.sql</code>{" "}
             을 SQL Editor 에서 실행하면 테이블이 준비됩니다.
+          </p>
+          <p>
+            Gemini API 키는{" "}
+            <code className="rounded bg-background px-1 text-foreground">
+              supabase secrets set GEMINI_API_KEY=...
+            </code>{" "}
+            로 등록하고{" "}
+            <code className="rounded bg-background px-1 text-foreground">
+              supabase functions deploy gemini
+            </code>{" "}
+            으로 배포하세요.
           </p>
         </CardContent>
       </Card>

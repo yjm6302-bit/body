@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Loader2, Settings2, ChevronLeft } from "lucide-react";
+import { Settings2, ChevronLeft } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -13,6 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { ChoiceChips } from "@/components/common/ChoiceChips";
+import { DeleteButton } from "@/components/common/DeleteButton";
+import { ListRow } from "@/components/common/ListRow";
 import { toast } from "@/components/ui/toaster";
 import {
   setSupplementTaken,
@@ -53,9 +57,9 @@ export function SupplementSheet({
 
   const takenMap = new Map(logs.map((l) => [l.supplement_setting_id, l.taken]));
 
-  const toggle = async (settingId: string, next: boolean) => {
+  const toggleTime = async (items: SupplementSetting[], next: boolean) => {
     try {
-      await setSupplementTaken(recordId, settingId, next);
+      await Promise.all(items.map((s) => setSupplementTaken(recordId, s.id, next)));
       onSaved();
     } catch {
       toast.error("저장에 실패했습니다.");
@@ -98,7 +102,7 @@ export function SupplementSheet({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerHeader className="flex-row items-center justify-between">
+        <DrawerHeader className="flex flex-row items-center justify-between gap-3">
           <div>
             <DrawerTitle>{manage ? "영양제 설정" : "영양제"}</DrawerTitle>
             <DrawerDescription>
@@ -128,37 +132,23 @@ export function SupplementSheet({
             TIMES.map((t) => {
               const items = settings.filter((s) => s.package_time === t);
               if (items.length === 0) return null;
+              const allTaken = items.every((s) => takenMap.get(s.id) ?? false);
               return (
-                <div key={t} className="space-y-2">
-                  <p className="text-xs font-semibold text-highlight">{t}</p>
-                  {items.map((s) => {
-                    const checked = takenMap.get(s.id) ?? false;
-                    return (
-                      <label
-                        key={s.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3 py-2.5"
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => toggle(s.id, Boolean(v))}
-                        />
-                        <span className="flex-1 text-sm">
-                          <span>
-                            {s.name}
-                            {s.dosage && (
-                              <span className="text-muted-foreground"> · {s.dosage}</span>
-                            )}
-                          </span>
-                          {s.ingredients && (
-                            <span className="mt-0.5 block whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                              {s.ingredients}
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <label
+                  key={t}
+                  className="flex cursor-pointer items-center gap-3 rounded-md border border-border bg-background px-3 py-3"
+                >
+                  <Checkbox
+                    checked={allTaken}
+                    onCheckedChange={(v) => toggleTime(items, Boolean(v))}
+                  />
+                  <span className="flex-1">
+                    <span className="text-sm font-semibold text-highlight">{t}</span>
+                    <span className="mt-0.5 block text-sm text-muted-foreground">
+                      {items.map((s) => s.name).join(", ")}
+                    </span>
+                  </span>
+                </label>
               );
             })}
 
@@ -195,41 +185,35 @@ export function SupplementSheet({
                 </div>
                 <div className="space-y-1.5">
                   <Label>시간대</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {TIMES.map((t) => (
-                      <Button
-                        key={t}
-                        type="button"
-                        size="sm"
-                        variant={time === t ? "highlight" : "secondary"}
-                        onClick={() => setTime(t)}
-                      >
-                        {t}
-                      </Button>
-                    ))}
-                  </div>
+                  <ChoiceChips
+                    options={TIMES}
+                    value={time}
+                    onChange={setTime}
+                    activeVariant="highlight"
+                    className="grid grid-cols-4 gap-2"
+                  />
                 </div>
-                <Button variant="highlight" onClick={addSetting} disabled={busy} className="w-full">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  등록
-                </Button>
+                <SubmitButton
+                  variant="highlight"
+                  action="add"
+                  busy={busy}
+                  onClick={addSetting}
+                  className="w-full"
+                >
+                  추가
+                </SubmitButton>
               </div>
 
               {settings.length > 0 && (
                 <ul className="space-y-2">
                   {settings.map((s) => (
-                    <li
-                      key={s.id}
-                      className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
+                    <ListRow key={s.id}>
                       <span>
                         <span className="font-medium">{s.name}</span>
                         <span className="text-muted-foreground"> · {s.package_time}</span>
                       </span>
-                      <button onClick={() => removeSetting(s.id)} aria-label="삭제">
-                        <Trash2 className="h-4 w-4 text-danger" />
-                      </button>
-                    </li>
+                      <DeleteButton onClick={() => removeSetting(s.id)} />
+                    </ListRow>
                   ))}
                 </ul>
               )}
@@ -238,7 +222,7 @@ export function SupplementSheet({
         </div>
 
         <DrawerFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="highlight" onClick={() => onOpenChange(false)}>
             완료
           </Button>
         </DrawerFooter>

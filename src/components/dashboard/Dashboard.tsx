@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { LogOut, HeartPulse } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useDailyBundle } from "@/hooks/useDailyBundle";
 import { useSupplementSettings } from "@/hooks/useSupplementSettings";
-import { Button } from "@/components/ui/button";
+import { useShoes } from "@/hooks/useShoes";
 import { DateNav } from "./DateNav";
 import { ProfileHeader } from "./ProfileHeader";
 import { LogGrid, type SheetKey } from "./LogGrid";
+import { Sidebar } from "./Sidebar";
+import { AppHeader } from "./AppHeader";
+import { StatsView } from "@/components/stats/StatsView";
+import { ComprehensiveReportView } from "@/components/stats/ComprehensiveReportView";
 import { FeedbackPanel } from "@/components/feedback/FeedbackPanel";
+import type { StatCategory } from "@/lib/stats";
 import { CardioSheet } from "@/components/sheets/CardioSheet";
 import { StrengthSheet } from "@/components/sheets/StrengthSheet";
 import { StretchingSheet } from "@/components/sheets/StretchingSheet";
@@ -22,14 +26,20 @@ interface Props {
   userId: string;
 }
 
+/** 현재 보여줄 화면: 대시보드 메인 / 종합소견 / 항목별 통계 */
+type View = "dashboard" | "report" | StatCategory;
+
 export function Dashboard({ userId }: Props) {
   const { signOut } = useAuth();
   const [date, setDate] = useState(() => new Date());
   const [active, setActive] = useState<SheetKey | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState<View>("dashboard");
 
   const { profile, update: updateProfile } = useProfile(userId);
   const { bundle, reload } = useDailyBundle(userId, date);
   const { settings, reload: reloadSettings } = useSupplementSettings(userId);
+  const { shoes, reload: reloadShoes } = useShoes(userId);
 
   const recordId = bundle.record?.id;
   const close = () => setActive(null);
@@ -37,18 +47,58 @@ export function Dashboard({ userId }: Props) {
     void reload();
   };
 
+  const goto = (next: View) => {
+    setView(next);
+    setMenuOpen(false);
+  };
+  const backToDashboard = () => setView("dashboard");
+
+  const sidebar = (
+    <Sidebar
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
+      profile={profile}
+      onSelectReport={() => goto("report")}
+      onSelectCategory={(c) => goto(c)}
+      onLogout={() => signOut()}
+    />
+  );
+
+  // --- 종합 건강 소견 화면 ---------------------------------------------------
+  if (view === "report") {
+    return (
+      <>
+        <ComprehensiveReportView
+          userId={userId}
+          profile={profile}
+          onBack={backToDashboard}
+          onOpenMenu={() => setMenuOpen(true)}
+        />
+        {sidebar}
+      </>
+    );
+  }
+
+  // --- 항목별 통계/타임라인 화면 ---------------------------------------------
+  if (view !== "dashboard") {
+    return (
+      <>
+        <StatsView
+          userId={userId}
+          category={view}
+          onBack={backToDashboard}
+          onOpenMenu={() => setMenuOpen(true)}
+        />
+        {sidebar}
+      </>
+    );
+  }
+
+  // --- 대시보드 메인 화면 ----------------------------------------------------
   return (
     <div className="flex flex-1 flex-col">
-      {/* 헤더 */}
-      <header className="flex items-center justify-between px-4 pt-safe pt-4">
-        <div className="flex items-center gap-2">
-          <HeartPulse className="h-5 w-5 text-primary" />
-          <span className="font-bold">건강관리</span>
-        </div>
-        <Button variant="ghost" size="icon" aria-label="로그아웃" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4 text-muted-foreground" />
-        </Button>
-      </header>
+      <AppHeader onOpenMenu={() => setMenuOpen(true)} />
+      {sidebar}
 
       <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
         <DateNav date={date} onChange={setDate} />
@@ -79,8 +129,11 @@ export function Dashboard({ userId }: Props) {
           <CardioSheet
             open={active === "cardio"}
             onOpenChange={close}
+            userId={userId}
             recordId={recordId}
             logs={bundle.cardio}
+            shoes={shoes}
+            onShoesChanged={reloadShoes}
             onSaved={onSaved}
           />
           <StrengthSheet

@@ -7,11 +7,11 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
-import { Loader2 } from "lucide-react";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { ChoiceChips } from "@/components/common/ChoiceChips";
 import type { Profile } from "@/types/database";
 
 interface Props {
@@ -68,18 +68,12 @@ export function ProfileEditSheet({ open, onOpenChange, profile, onSave }: Props)
           </div>
           <div className="space-y-1.5">
             <Label>성별</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {["남자", "여자"].map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={gender === g ? "default" : "secondary"}
-                  onClick={() => setGender(g)}
-                >
-                  {g}
-                </Button>
-              ))}
-            </div>
+            <ChoiceChips
+              options={["남자", "여자"]}
+              value={gender}
+              onChange={setGender}
+              className="grid grid-cols-2 gap-2"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="height">키 (cm)</Label>
@@ -94,9 +88,9 @@ export function ProfileEditSheet({ open, onOpenChange, profile, onSave }: Props)
         </div>
 
         <DrawerFooter>
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}저장
-          </Button>
+          <SubmitButton action="save" busy={saving} onClick={save}>
+            저장
+          </SubmitButton>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

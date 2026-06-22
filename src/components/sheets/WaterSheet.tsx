@@ -117,7 +117,7 @@ export function WaterSheet({ open, onOpenChange, recordId, logs, onSaved }: Prop
                 >
                   <span className="text-trust">{l.amount_ml}ml</span>
                   <button onClick={() => remove(l.id)} aria-label="삭제">
-                    <Trash2 className="h-3.5 w-3.5 text-danger" />
+                    <Trash2 className="h-4 w-4 text-danger" />
                   </button>
                 </li>
               ))}
@@ -126,7 +126,7 @@ export function WaterSheet({ open, onOpenChange, recordId, logs, onSaved }: Prop
         </div>
 
         <DrawerFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="trust" onClick={() => onOpenChange(false)}>
             완료
           </Button>
         </DrawerFooter>

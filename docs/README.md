@@ -19,7 +19,9 @@
 
 3. **[데이터베이스 스키마 명세서 (database_schema.md)](file:///c:/Users/Admin/Desktop/건강관리앱/docs/database_schema.md)**
    - 전체 테이블 간의 관계도 (ERD)
-   - 10개 테이블(`profiles`, `daily_records` 등)의 상세 컬럼 및 데이터 타입 명세
+   - 11개 테이블(`profiles`, `daily_records`, `shoes` 등)의 상세 컬럼 및 데이터 타입 명세
+   - 신규 프로젝트용 최신 전체 스키마: `supabase/schema.sql`
+   - 운영 중인 DB 변경분(증분 SQL): `supabase/migrations/` 폴더
 
 ---
 

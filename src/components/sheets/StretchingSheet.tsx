@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Trash2, Plus, Loader2 } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -8,9 +7,12 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { ChoiceChips } from "@/components/common/ChoiceChips";
+import { DeleteButton } from "@/components/common/DeleteButton";
+import { ListRow } from "@/components/common/ListRow";
 import { toast } from "@/components/ui/toaster";
 import { insertLog, deleteLog } from "@/lib/repository";
 import type { StretchingLog } from "@/types/database";
@@ -70,19 +72,7 @@ export function StretchingSheet({ open, onOpenChange, recordId, logs, onSaved }:
         </DrawerHeader>
 
         <div className="space-y-4 overflow-y-auto px-5 py-2">
-          <div className="flex flex-wrap gap-2">
-            {PARTS.map((p) => (
-              <Button
-                key={p}
-                type="button"
-                size="sm"
-                variant={name === p ? "default" : "secondary"}
-                onClick={() => setName(p)}
-              >
-                {p}
-              </Button>
-            ))}
-          </div>
+          <ChoiceChips options={PARTS} value={name} onChange={setName} activeVariant="exercise" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -104,27 +94,21 @@ export function StretchingSheet({ open, onOpenChange, recordId, logs, onSaved }:
           {logs.length > 0 && (
             <ul className="space-y-2">
               {logs.map((l) => (
-                <li
-                  key={l.id}
-                  className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
-                >
+                <ListRow key={l.id}>
                   <span>
                     <span className="font-medium text-exercise">{l.name}</span> · {l.duration}분
                   </span>
-                  <button onClick={() => remove(l.id)} aria-label="삭제">
-                    <Trash2 className="h-4 w-4 text-danger" />
-                  </button>
-                </li>
+                  <DeleteButton onClick={() => remove(l.id)} />
+                </ListRow>
               ))}
             </ul>
           )}
         </div>
 
         <DrawerFooter>
-          <Button onClick={add} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            추가하기
-          </Button>
+          <SubmitButton variant="exercise" action="add" busy={busy} onClick={add}>
+            추가
+          </SubmitButton>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

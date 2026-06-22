@@ -28,14 +28,26 @@ create table if not exists public.daily_records (
 create index if not exists idx_daily_records_user_date
   on public.daily_records (user_id, date);
 
+-- 2-1) shoes : 신발장(운동화별 누적 주행거리 관리) ----------------------------
+create table if not exists public.shoes (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references public.profiles (id) on delete cascade,
+  name             varchar not null,                 -- 신발명
+  initial_distance numeric not null default 0,       -- 이전 누적 거리(km) 베이스라인
+  created_at       timestamptz not null default now()
+);
+
 -- 3) cardio_logs : 유산소 운동 기록 -------------------------------------------
 create table if not exists public.cardio_logs (
   id              uuid primary key default gen_random_uuid(),
   daily_record_id uuid not null references public.daily_records (id) on delete cascade,
   type            varchar not null default '달리기',
   distance        numeric not null,
-  duration        integer not null   -- 초 단위
+  duration        integer not null,  -- 초 단위
+  shoe_id         uuid references public.shoes (id) on delete set null  -- 사용한 신발(신발장)
 );
+-- 이미 이전 버전(shoe_id 컬럼 없음)으로 테이블을 만들었다면 아래를 한 번 실행하세요.
+--   alter table public.cardio_logs add column if not exists shoe_id uuid references public.shoes (id) on delete set null;
 
 -- 4) strength_logs : 무산소 운동 기록 -----------------------------------------
 create table if not exists public.strength_logs (
@@ -106,6 +118,7 @@ create table if not exists public.health_metrics (
 -- ============================================================================
 alter table public.profiles            enable row level security;
 alter table public.daily_records       enable row level security;
+alter table public.shoes               enable row level security;
 alter table public.cardio_logs         enable row level security;
 alter table public.strength_logs       enable row level security;
 alter table public.stretching_logs     enable row level security;
@@ -123,6 +136,8 @@ create policy "own profile" on public.profiles
 create policy "own daily_records" on public.daily_records
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own supplement_settings" on public.supplement_settings
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own shoes" on public.shoes
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own health_metrics" on public.health_metrics
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

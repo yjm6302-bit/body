@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Plus, Loader2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -11,6 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubmitButton } from "@/components/common/SubmitButton";
+import { ChoiceChips } from "@/components/common/ChoiceChips";
+import { DeleteButton } from "@/components/common/DeleteButton";
+import { ListRow } from "@/components/common/ListRow";
 import { toast } from "@/components/ui/toaster";
 import { insertLog, deleteLog } from "@/lib/repository";
 import type { DietLog, MealType } from "@/types/database";
@@ -83,19 +87,13 @@ export function DietSheet({ open, onOpenChange, recordId, logs, onSaved }: Props
         </DrawerHeader>
 
         <div className="space-y-4 overflow-y-auto px-5 py-2">
-          <div className="grid grid-cols-4 gap-2">
-            {MEALS.map((m) => (
-              <Button
-                key={m}
-                type="button"
-                size="sm"
-                variant={meal === m ? "highlight" : "secondary"}
-                onClick={() => setMeal(m)}
-              >
-                {m}
-              </Button>
-            ))}
-          </div>
+          <ChoiceChips
+            options={MEALS}
+            value={meal}
+            onChange={setMeal}
+            activeVariant="highlight"
+            className="grid grid-cols-4 gap-2"
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="kw">음식 키워드</Label>
@@ -132,28 +130,22 @@ export function DietSheet({ open, onOpenChange, recordId, logs, onSaved }: Props
           {logs.length > 0 && (
             <ul className="space-y-2 border-t border-border pt-3">
               {logs.map((l) => (
-                <li
-                  key={l.id}
-                  className="flex items-start justify-between rounded-md border border-border bg-background px-3 py-2 text-sm"
-                >
+                <ListRow key={l.id} align="start">
                   <div>
                     <p className="font-medium text-highlight">{l.meal_type}</p>
                     <p className="text-xs text-muted-foreground">{l.keywords.join(", ")}</p>
                   </div>
-                  <button onClick={() => remove(l.id)} aria-label="삭제">
-                    <Trash2 className="h-4 w-4 text-danger" />
-                  </button>
-                </li>
+                  <DeleteButton onClick={() => remove(l.id)} />
+                </ListRow>
               ))}
             </ul>
           )}
         </div>
 
         <DrawerFooter>
-          <Button variant="highlight" onClick={save} disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            식단 저장
-          </Button>
+          <SubmitButton variant="highlight" action="add" busy={busy} onClick={save}>
+            추가
+          </SubmitButton>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

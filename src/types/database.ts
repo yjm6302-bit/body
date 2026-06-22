@@ -39,6 +39,30 @@ export interface CardioLog {
   type: string;
   distance: number; // km
   duration: number; // 초
+  shoe_id?: string | null; // 사용한 신발(신발장)
+}
+
+/** 신발장: 운동화별 누적 주행거리 관리 (사용자 마스터 데이터) */
+export interface Shoe {
+  id: string;
+  user_id: string;
+  name: string;
+  initial_distance: number; // 이전 누적 거리(km) 베이스라인
+  created_at: string;
+}
+
+/** 현재 주행거리(= initial_distance + 유산소 기록 합)를 포함한 UI용 파생 타입 */
+export interface ShoeWithMileage extends Shoe {
+  current_distance: number; // km
+}
+
+/** 신발 상세 타임라인 한 줄 (cardio_logs + 기록 날짜) */
+export interface ShoeTimelineEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: string;
+  distance: number; // km
+  duration: number; // 초
 }
 
 export interface StrengthSet {
@@ -110,4 +134,26 @@ export interface DailyBundle {
   diet: DietLog[];
   water: WaterLog[];
   supplements: SupplementLog[];
+}
+
+/**
+ * 통계/타임라인용 기간 단위 통합 데이터 묶음.
+ * 자식 로그들은 daily_record_id 만 들고 있으므로, 날짜를 알려면 records 와 join 해야 한다.
+ */
+export interface RangeBundle {
+  records: DailyRecord[];
+  cardio: CardioLog[];
+  strength: StrengthLog[];
+  stretching: StretchingLog[];
+  diet: DietLog[];
+  water: WaterLog[];
+  supplements: SupplementLog[];
+}
+
+/** 종합 건강 소견(Comprehensive AI Report) 결과 스키마 */
+export interface ComprehensiveReport {
+  overallScore: number; // 0~100 종합 신체 건강 점수
+  bodyCompositionAnalysis: string; // 체성분/검진 분석
+  lifestyleAnalysis: string; // 운동·수면·식단 연계 평가
+  actionPlan: string; // 향후 4주 추천 액션 플랜
 }

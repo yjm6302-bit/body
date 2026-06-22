@@ -171,11 +171,7 @@ export function FeedbackPanel({ bundle, profile, settings, onSaved }: Props) {
       </div>
 
       {!feedback ? (
-        <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            오늘 입력된 운동, 식단, 수면 데이터를 종합하여<br />
-            AI 트레이너의 카테고리별 맞춤 피드백을 받아보세요.
-          </p>
+        <div className="flex flex-col items-center justify-center text-center">
           <Button
             onClick={handleRequestFeedback}
             disabled={loading}

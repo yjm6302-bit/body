@@ -79,7 +79,13 @@ export function LogGrid({ bundle, onOpen }: Props) {
           <button
             key={key}
             type="button"
-            onClick={() => onOpen(key)}
+            // 드로어는 onOpenAutoFocus 를 막아 포커스를 자동 이동시키지 않는다.
+            // 트리거 버튼이 포커스를 유지한 채 vaul 이 배경에 aria-hidden 을 걸면
+            // "focused element hidden from AT" 경고가 발생하므로, 열기 전에 blur 한다.
+            onClick={(e) => {
+              e.currentTarget.blur();
+              onOpen(key);
+            }}
             className={cn(
               "relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-surface p-1",
               "transition-colors hover:border-primary/50 active:scale-[0.97]",

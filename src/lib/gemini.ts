@@ -1,14 +1,56 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import type { AiFeedback } from "@/types/database";
+import { Type } from "@google/genai";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { AiFeedback, ComprehensiveReport } from "@/types/database";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+// Gemini API 키는 더 이상 클라이언트에 두지 않는다. 키는 Supabase Edge Function
+// (gemini)의 Secret 에만 존재하며, 아래 callGemini 가 그 함수를 통해 호출한다.
+// 따라서 키가 브라우저 번들로 노출되지 않는다.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
-export const isGeminiConfigured = Boolean(apiKey);
-
-const ai = new GoogleGenAI({ apiKey: apiKey ?? "" });
+// 프록시(Edge Function)는 Supabase 가 설정돼 있어야 호출 가능하다.
+export const isGeminiConfigured = isSupabaseConfigured;
 
 // 무료 등급에서 사용 가능한 멀티모달 모델
 const MODEL = "gemini-2.5-flash";
+
+interface GeminiRequest {
+  model: string;
+  contents: unknown;
+  config?: unknown;
+}
+
+/** Edge Function(gemini)을 통해 Gemini 를 호출하고 응답 텍스트를 돌려준다. */
+async function callGemini(req: GeminiRequest): Promise<{ text: string }> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token ?? ANON_KEY;
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(req),
+  });
+
+  if (!res.ok) {
+    let message = `Gemini 프록시 오류 (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.error) message = body.error;
+    } catch {
+      /* ignore */
+    }
+    // 상태코드를 보존해 retryWithDelay 의 429/503 재시도 판단에 사용한다.
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+
+  return res.json();
+}
 
 /**
  * 트래픽 한도(429)나 서버 일시 장애(503) 등 일시적인 사유로 API 호출이 실패할 때 
@@ -66,7 +108,7 @@ export async function parseHealthImage(
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
 
-  const response = await retryWithDelay(() => ai.models.generateContent({
+  const response = await retryWithDelay(() => callGemini({
     model: MODEL,
     contents: [
       {
@@ -117,7 +159,7 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
     throw new Error("Gemini API 키가 설정되지 않았습니다.");
   }
 
-  const response = await retryWithDelay(() => ai.models.generateContent({
+  const response = await retryWithDelay(() => callGemini({
     model: MODEL,
     contents: [
       {
@@ -131,9 +173,10 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
               "기록이 비어있는 영역은 입력을 권유하는 톤으로 안내하세요.",
               "",
               "※ 건강 점수(score) 채점 기준 (매우 엄격하고 보수적으로 산정할 것):",
-              "- 기본 시작 점수는 60점입니다. 모든 카테고리(운동, 식단, 수분, 수면)가 골고루 성실하게 기록되고 모범적이어야만 80점 이상을 부여할 수 있습니다.",
+              "- 기본 시작 점수는 60점입니다. 모든 카테고리(운동, 식단, 수분, 수면, 영양제)가 골고루 성실하게 기록되고 모범적이어야만 80점 이상을 부여할 수 있습니다.",
               "- 유산소/무산소 운동 기록이 둘 다 전혀 없으면 당일 건강 점수는 최고 60점을 넘을 수 없습니다.",
               "- 수분 섭취량이 1000ml 미만이거나 식단 기록이 아예 없는 등 영양 관리가 미흡하면 점수를 대폭 감점(10~20점 감점)하세요.",
+              "- 영양제 복용 성실도도 반영하세요: 등록된 영양제 중 미복용 비율이 높을수록 감점하고, 시간대별로 빠짐없이 복용했다면 가점하세요. (단, 등록된 영양제가 전혀 없으면 이 기준은 점수에 반영하지 않습니다.)",
               "- 수면 시간이 6시간 미만이거나 기록이 없으면 추가로 감점하십시오.",
               "- 완벽에 가까운 루틴을 수행한 날에만 제한적으로 90점 이상을 부여하세요.",
               "",
@@ -162,4 +205,120 @@ export async function generateFeedback(summary: string): Promise<AiFeedback> {
 
   const text = response.text ?? "{}";
   return JSON.parse(text) as AiFeedback;
+}
+
+// ---------------------------------------------------------------------------
+// 3) 항목별 트렌드 분석 → 해당 카테고리에 집중된 짧은 조언
+// ---------------------------------------------------------------------------
+/**
+ * 특정 항목(체중, 유산소 등)의 기간 통계 요약 텍스트를 받아
+ * 2~3문장 분량의 집중 분석/조언을 반환한다.
+ */
+export async function generateTrendFeedback(
+  category: string,
+  summary: string,
+): Promise<{ feedback: string }> {
+  if (!isGeminiConfigured) {
+    throw new Error("Gemini API 키가 설정되지 않았습니다.");
+  }
+
+  const response = await retryWithDelay(() => callGemini({
+    model: MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: [
+              "당신은 친절하고 전문적인 헬스 트레이너 겸 데이터 분석가입니다.",
+              `아래는 사용자의 '${category}' 항목에 대한 일정 기간 통계 요약입니다.`,
+              "이 데이터의 추세(증가/감소/정체/규칙성 등)를 한국어로 분석하고,",
+              "실천 가능한 조언을 2~3문장으로만 간결하게 작성하세요.",
+              "수치를 근거로 들되 과하게 단정하지 말고, 기록이 부족하면 꾸준한 기록을 권하세요.",
+              "",
+              `[${category} 통계 요약]`,
+              summary,
+            ].join("\n"),
+          },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          feedback: { type: Type.STRING, description: "2~3문장 분량의 추세 분석 조언" },
+        },
+        required: ["feedback"],
+      },
+    },
+  }));
+
+  const text = response.text ?? "{}";
+  return JSON.parse(text) as { feedback: string };
+}
+
+// ---------------------------------------------------------------------------
+// 4) 종합 건강 소견 → 인바디/검진 + 30일 라이프로그 통합 보고서
+// ---------------------------------------------------------------------------
+/**
+ * 인바디/검진 데이터와 최근 30일 일상 로그 요약을 기반으로
+ * 종합 건강 보고서(점수 + 체성분/생활/액션플랜)를 생성한다.
+ */
+export async function generateComprehensiveReport(
+  summary: string,
+): Promise<ComprehensiveReport> {
+  if (!isGeminiConfigured) {
+    throw new Error("Gemini API 키가 설정되지 않았습니다.");
+  }
+
+  const response = await retryWithDelay(() => callGemini({
+    model: MODEL,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: [
+              "당신은 임상 데이터 해석 경험이 풍부한 전문 건강 코치입니다.",
+              "아래는 사용자의 최근 인바디/건강검진 결과와 최근 30일간의 일상 라이프 로그 요약입니다.",
+              "이를 종합 분석해 한국어로 깊이 있는 건강 보고서를 작성하세요.",
+              "",
+              "다음 세 영역을 반드시 충실히 다루세요:",
+              "1) bodyCompositionAnalysis: 체성분(근육량·체지방량 등) 및 검진 수치를 해석하고 대사 건강 위험도를 평가",
+              "2) lifestyleAnalysis: 식습관·수분·수면·운동 등 일상 로그와 신체 상태 간의 인과관계를 분석하고 피드백",
+              "3) actionPlan: 향후 4주간 실천 가능한 맞춤 운동/식이 프로그램을 구체적으로 제안",
+              "",
+              "각 영역은 문단 형태로 풍부하게 서술하되, 데이터에 없는 수치를 지어내지 마세요.",
+              "",
+              "※ overallScore(0~100) 채점 기준 (엄격·보수적으로):",
+              "- 체성분/검진 지표가 정상 범위이고 일상 관리가 모범적일 때만 80점 이상을 부여합니다.",
+              "- 운동·식단·수면 중 방치된 영역이 있거나 체지방/대사 지표 위험 신호가 있으면 대폭 감점하세요.",
+              "- 데이터가 부족하면 점수를 보수적으로 산정하고 그 사유를 분석에 명시하세요.",
+              "",
+              "[종합 건강 데이터]",
+              summary,
+            ].join("\n"),
+          },
+        ],
+      },
+    ],
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          overallScore: { type: Type.INTEGER, description: "0~100 종합 신체 건강 점수" },
+          bodyCompositionAnalysis: { type: Type.STRING, description: "체성분/검진 결과 분석" },
+          lifestyleAnalysis: { type: Type.STRING, description: "운동/수면/식단 연계 평가" },
+          actionPlan: { type: Type.STRING, description: "향후 4주 추천 솔루션 및 액션 플랜" },
+        },
+        required: ["overallScore", "bodyCompositionAnalysis", "lifestyleAnalysis", "actionPlan"],
+      },
+    },
+  }));
+
+  const text = response.text ?? "{}";
+  return JSON.parse(text) as ComprehensiveReport;
 }

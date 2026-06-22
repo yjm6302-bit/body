@@ -1,6 +1,8 @@
 # 🗄️ 데이터베이스 스키마 명세서
 
-본 문서는 Supabase(PostgreSQL) 상에 구축될 10개 테이블의 릴레이션 관계(ERD) 및 상세 컬럼 규격을 설명합니다.
+본 문서는 Supabase(PostgreSQL) 상에 구축될 11개 테이블의 릴레이션 관계(ERD) 및 상세 컬럼 규격을 설명합니다.
+
+> 운영 중인 DB에 변경분을 적용하는 시간순 마이그레이션 기록은 [migrations.md](./migrations.md) 를 참고하세요.
 
 ---
 
@@ -11,7 +13,9 @@ erDiagram
     profiles ||--oI daily_records : "has many"
     profiles ||--oI supplement_settings : "manages"
     profiles ||--oI health_metrics : "records"
+    profiles ||--oI shoes : "owns"
     
+    shoes ||--oI cardio_logs : "worn in"
     daily_records ||--oI cardio_logs : "tracks"
     daily_records ||--oI strength_logs : "tracks"
     daily_records ||--oI stretching_logs : "tracks"
@@ -51,14 +55,16 @@ erDiagram
     | `ai_feedback` | `jsonb` | NULL 가능 | Gemini AI 피드백 텍스트 (종합/운동/영양/수면 카테고리 포함) |
 
 ### 3) `cardio_logs` (유산소 운동 기록)
-*   **설명**: 달리기, 자전거 등 유산소 운동 데이터 기록 테이블.
+*   **설명**: 달리기, 걷기 등 유산소 운동 데이터 기록 테이블. 사용한 신발(`shoes`)을 연결하면 주행거리가 신발장에 누적됩니다.
 *   **구조**:
     | 컬럼명 | 데이터 타입 | 제약 조건 | 설명 |
     | :--- | :--- | :--- | :--- |
     | `id` | `uuid` | PK | 고유 번호 |
     | `daily_record_id`| `uuid` | FK (daily_records.id) ON DELETE CASCADE | 데일리 기록 ID |
+    | `type` | `varchar` | NOT NULL, Default '달리기' | 운동 종류 (달리기/걷기) |
     | `distance` | `numeric` | NOT NULL | 달린 거리 (km) |
     | `duration` | `integer` | NOT NULL | 소요 시간 (초 단위) |
+    | `shoe_id` | `uuid` | FK (shoes.id) ON DELETE SET NULL, NULL 가능 | 사용한 신발 (신발장) |
 
 ### 4) `strength_logs` (무산소 운동 기록)
 *   **설명**: 헬스, 웨이트 트레이닝 운동 기록. 세트별 상세 무게 및 횟수는 JSON 배열로 보관합니다.
@@ -130,3 +136,14 @@ erDiagram
     | `date` | `date` | NOT NULL | 측정일/검사일 |
     | `metric_type` | `varchar` | NOT NULL (inbody / checkup) | 데이터 타입 분류 (인바디 / 건강검진) |
     | `data` | `jsonb` | NOT NULL | 파싱된 정형 JSON 수치 셋 |
+
+### 11) `shoes` (신발장 — 운동화별 누적 주행거리)
+*   **설명**: 나이키런 방식으로 운동화별 누적 주행거리를 관리하는 사용자 마스터 데이터. 현재 주행거리 = `initial_distance` + 해당 신발로 기록된 `cardio_logs.distance` 합계 (앱에서 계산).
+*   **구조**:
+    | 컬럼명 | 데이터 타입 | 제약 조건 | 설명 |
+    | :--- | :--- | :--- | :--- |
+    | `id` | `uuid` | PK | 신발 식별값 |
+    | `user_id` | `uuid` | FK (profiles.id) ON DELETE CASCADE | 소유자 ID |
+    | `name` | `varchar` | NOT NULL | 신발명 (예: 페가수스 41) |
+    | `initial_distance` | `numeric` | NOT NULL, Default 0 | 이전 누적 거리(km) 베이스라인 ('이전 데이터 추가') |
+    | `created_at` | `timestamp` | Default now() | 생성 일자 |

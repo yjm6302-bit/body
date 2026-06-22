@@ -8,8 +8,7 @@ import { toast } from "@/components/ui/toaster";
 import { HeartPulse, Loader2 } from "lucide-react";
 
 export function LoginScreen() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const { signIn } = useAuth();
   const [email, setEmail] = useState(import.meta.env.VITE_APP_EMAIL ?? "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,12 +37,9 @@ export function LoginScreen() {
     e.preventDefault();
     setBusy(true);
     try {
-      const fn = mode === "signin" ? signIn : signUp;
-      const { error } = await fn(email, password);
+      const { error } = await signIn(email, password);
       if (error) {
         toast.error(getKoreanErrorMessage(error.message));
-      } else if (mode === "signup") {
-        toast.success("가입 완료! 이메일 인증 후 로그인하세요.");
       }
     } finally {
       setBusy(false);
@@ -62,7 +58,7 @@ export function LoginScreen() {
 
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>{mode === "signin" ? "로그인" : "회원가입"}</CardTitle>
+          <CardTitle>로그인</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
@@ -82,7 +78,7 @@ export function LoginScreen() {
               <Input
                 id="password"
                 type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -91,16 +87,9 @@ export function LoginScreen() {
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === "signin" ? "로그인" : "회원가입"}
+              로그인
             </Button>
           </form>
-          <button
-            type="button"
-            className="mt-4 w-full text-center text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          >
-            {mode === "signin" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
-          </button>
         </CardContent>
       </Card>
     </div>

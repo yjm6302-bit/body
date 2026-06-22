@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Loader2, Upload, Sparkles, Check } from "lucide-react";
+import { Loader2, Upload, Sparkles } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/common/SubmitButton";
 import { toast } from "@/components/ui/toaster";
 import { parseHealthImage, isGeminiConfigured, type ParsedMetric } from "@/lib/gemini";
 import { addHealthMetric } from "@/lib/repository";
@@ -105,7 +106,7 @@ export function UploadSheet({ open, onOpenChange, userId, date, onSaved }: Props
         <div className="space-y-4 overflow-y-auto px-5 py-2">
           {!isGeminiConfigured && (
             <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-              VITE_GEMINI_API_KEY 가 설정되지 않아 AI 파싱을 사용할 수 없습니다.
+              Supabase 설정이 없어 AI 파싱을 사용할 수 없습니다.
             </p>
           )}
 
@@ -175,10 +176,15 @@ export function UploadSheet({ open, onOpenChange, userId, date, onSaved }: Props
               <Button variant="secondary" className="flex-1" onClick={reset}>
                 다시 선택
               </Button>
-              <Button variant="highlight" className="flex-1" onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              <SubmitButton
+                variant="highlight"
+                action="save"
+                busy={saving}
+                onClick={save}
+                className="flex-1"
+              >
                 저장
-              </Button>
+              </SubmitButton>
             </div>
           ) : (
             <Button variant="secondary" onClick={() => onOpenChange(false)}>
