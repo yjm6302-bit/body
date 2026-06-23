@@ -4,6 +4,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useDailyBundle } from "@/hooks/useDailyBundle";
 import { useSupplementSettings } from "@/hooks/useSupplementSettings";
 import { useShoes } from "@/hooks/useShoes";
+import { useFasting } from "@/hooks/useFasting";
 import { DateNav } from "./DateNav";
 import { ProfileHeader } from "./ProfileHeader";
 import { LogGrid, type SheetKey } from "./LogGrid";
@@ -20,7 +21,7 @@ import { DietSheet } from "@/components/sheets/DietSheet";
 import { SupplementSheet } from "@/components/sheets/SupplementSheet";
 import { WaterSheet } from "@/components/sheets/WaterSheet";
 import { SleepSheet } from "@/components/sheets/SleepSheet";
-import { UploadSheet } from "@/components/sheets/UploadSheet";
+import { FastingSheet } from "@/components/sheets/FastingSheet";
 
 interface Props {
   userId: string;
@@ -40,6 +41,7 @@ export function Dashboard({ userId }: Props) {
   const { bundle, reload } = useDailyBundle(userId, date);
   const { settings, reload: reloadSettings } = useSupplementSettings(userId);
   const { shoes, reload: reloadShoes } = useShoes(userId);
+  const fasting = useFasting(userId);
 
   const recordId = bundle.record?.id;
   const close = () => setActive(null);
@@ -112,7 +114,7 @@ export function Dashboard({ userId }: Props) {
 
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">데일리 입력</h2>
-          <LogGrid bundle={bundle} onOpen={setActive} />
+          <LogGrid bundle={bundle} onOpen={setActive} fastingActive={fasting.running} />
         </section>
 
         <FeedbackPanel
@@ -181,15 +183,11 @@ export function Dashboard({ userId }: Props) {
             record={bundle.record}
             onSaved={onSaved}
           />
-          <UploadSheet
-            open={active === "upload"}
-            onOpenChange={close}
-            userId={userId}
-            date={date}
-            onSaved={onSaved}
-          />
         </>
       )}
+
+      {/* 공복 타이머는 일일 기록(recordId)과 무관하게 항상 사용할 수 있다. */}
+      <FastingSheet open={active === "fasting"} onOpenChange={close} fasting={fasting} />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toaster";
 import { useRangeBundle } from "@/hooks/useRangeBundle";
 import { generateTrendFeedback } from "@/lib/gemini";
 import { buildCategoryStats, type Period, type StatCategory } from "@/lib/stats";
+import { UploadSheet } from "@/components/sheets/UploadSheet";
 import { StatsLayout } from "./StatsLayout";
 
 interface Props {
@@ -43,10 +44,14 @@ export function StatsView({ userId, category, onBack, onOpenMenu }: Props) {
   const [period, setPeriod] = useState<Period>("weekly");
   // 조회 범위와 차트 버킷 계산을 일치시키기 위한 기준 시각 (마운트 시 1회 고정)
   const [today] = useState(() => new Date());
-  const { data, metrics, loading } = useRangeBundle(userId, period, today);
+  const { data, metrics, loading, reload } = useRangeBundle(userId, period, today);
 
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  // 검진/인바디 페이지에서만 결과지 업로드를 제공한다.
+  const isMetric = category === "metric";
 
   const meta = META[category];
   const stats = useMemo(
@@ -83,22 +88,34 @@ export function StatsView({ userId, category, onBack, onOpenMenu }: Props) {
   };
 
   return (
-    <StatsLayout
-      title={meta.title}
-      icon={meta.icon}
-      accent={meta.accent}
-      period={period}
-      onPeriodChange={setPeriod}
-      loading={loading}
-      summaryItems={stats.summaryItems}
-      chartData={stats.chartData}
-      chartConfig={stats.chartConfig}
-      timelineData={stats.timelineData}
-      aiFeedbackText={aiText}
-      onGenerateAiFeedback={handleGenerate}
-      loadingAiFeedback={aiLoading}
-      onBack={onBack}
-      onOpenMenu={onOpenMenu}
-    />
+    <>
+      <StatsLayout
+        title={meta.title}
+        icon={meta.icon}
+        accent={meta.accent}
+        period={period}
+        onPeriodChange={setPeriod}
+        loading={loading}
+        summaryItems={stats.summaryItems}
+        chartData={stats.chartData}
+        chartConfig={stats.chartConfig}
+        timelineData={stats.timelineData}
+        aiFeedbackText={aiText}
+        onGenerateAiFeedback={handleGenerate}
+        loadingAiFeedback={aiLoading}
+        onBack={onBack}
+        onOpenMenu={onOpenMenu}
+        onUpload={isMetric ? () => setUploadOpen(true) : undefined}
+      />
+      {isMetric && (
+        <UploadSheet
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          userId={userId}
+          date={today}
+          onSaved={() => void reload()}
+        />
+      )}
+    </>
   );
 }

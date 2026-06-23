@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/dashboard/AppHeader";
 import { toast } from "@/components/ui/toaster";
 import { generateComprehensiveReport } from "@/lib/gemini";
 import { fetchAllHealthMetrics, fetchDailyRecordsInRange } from "@/lib/repository";
+import { loadFastingHistory, summarizeFasting } from "@/lib/fasting";
 import { calcSleepHours, cn, toDateKey } from "@/lib/utils";
 import type {
   ComprehensiveReport,
@@ -103,6 +104,12 @@ export function ComprehensiveReportView({ userId, profile, onBack, onOpenMenu }:
     };
   }, [data]);
 
+  // 최근 30일 공복(간헐적 단식) 집계 — 로컬에 누적된 완료 세션 기준
+  const fasting = useMemo(
+    () => summarizeFasting(loadFastingHistory(userId), subDays(today, 29).getTime()),
+    [userId, today],
+  );
+
   const recentMetrics = metrics.slice(0, 3);
   const age = profile ? differenceInYears(today, new Date(profile.birth_date)) : null;
 
@@ -134,6 +141,11 @@ export function ComprehensiveReportView({ userId, profile, onBack, onOpenMenu }:
     lines.push(`  - 수분: 일평균 ${agg.waterAvg}ml`);
     lines.push(`  - 수면: 평균 ${agg.avgSleep != null ? `${agg.avgSleep}시간` : "기록 없음"}`);
     lines.push(`  - 영양제: 총 ${agg.takenSupp}회 복용`);
+    lines.push(
+      fasting.count > 0
+        ? `  - 간헐적 단식(공복): ${fasting.count}회, 평균 ${fasting.avgHours}시간, 최장 ${fasting.maxHours}시간, 목표 달성 ${fasting.goalMetCount}회`
+        : "  - 간헐적 단식(공복): 기록 없음",
+    );
 
     return lines.join("\n");
   };
@@ -168,6 +180,10 @@ export function ComprehensiveReportView({ userId, profile, onBack, onOpenMenu }:
     { label: "식단", value: `${agg.dietCount}끼` },
     { label: "수분(일평균)", value: `${agg.waterAvg.toLocaleString()}ml` },
     { label: "수면(평균)", value: agg.avgSleep != null ? `${agg.avgSleep}시간` : "—" },
+    {
+      label: "공복(횟수·평균)",
+      value: fasting.count > 0 ? `${fasting.count}회 · ${fasting.avgHours}시간` : "—",
+    },
   ];
 
   return (

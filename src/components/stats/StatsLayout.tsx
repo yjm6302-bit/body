@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles, Upload } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -32,6 +32,8 @@ interface StatsLayoutProps {
   loadingAiFeedback: boolean;
   onBack: () => void;
   onOpenMenu: () => void;
+  /** 지정 시 타이틀 옆에 업로드 버튼을 노출한다 (검진/인바디 결과지 업로드 등). */
+  onUpload?: () => void;
 }
 
 const TOOLTIP_STYLE = {
@@ -57,6 +59,7 @@ export function StatsLayout({
   loadingAiFeedback,
   onBack,
   onOpenMenu,
+  onUpload,
 }: StatsLayoutProps) {
   const hasChart = chartConfig.yKeys.length > 0 && chartData.length > 0;
 
@@ -76,10 +79,24 @@ export function StatsLayout({
 
       <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
         {/* 화면 제목 */}
-        <h1 className={cn("flex items-center gap-2 text-lg font-bold", accent)}>
-          {icon}
-          {title}
-        </h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className={cn("flex items-center gap-2 text-lg font-bold", accent)}>
+            {icon}
+            {title}
+          </h1>
+          {onUpload && (
+            <Button
+              type="button"
+              size="sm"
+              variant="highlight"
+              onClick={onUpload}
+              className="h-9 shrink-0 gap-1.5"
+            >
+              <Upload className="h-4 w-4" />
+              결과지 업로드
+            </Button>
+          )}
+        </div>
 
         {/* 기간 선택 탭 */}
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
